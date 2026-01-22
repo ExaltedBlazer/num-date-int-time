@@ -14,9 +14,9 @@ const account1 = {
   movementsDates: [
     '2025-11-18T21:31:17.178Z',
     '2025-12-23T07:42:02.383Z',
-    '2026-01-11T09:15:04.904Z',
-    '2026-01-09T10:17:24.185Z',
-    '2026-01-08T14:11:59.604Z',
+    '2026-01-13T09:15:04.904Z',
+    '2026-01-19T10:17:24.185Z',
+    '2026-01-18T14:11:59.604Z',
     '2025-05-27T17:01:17.194Z',
     '2025-07-11T23:36:17.929Z',
     '2025-07-12T10:51:36.790Z',
@@ -35,7 +35,7 @@ const account2 = {
     '2019-11-01T13:15:33.035Z',
     '2019-11-30T09:48:16.867Z',
     '2019-12-25T06:04:23.907Z',
-    '2020-01-25T14:18:46.235Z',
+    '2026-01-25T14:18:46.235Z',
     '2020-02-05T16:33:06.386Z',
     '2020-04-10T14:43:26.374Z',
     '2020-06-25T18:49:59.371Z',
@@ -89,23 +89,32 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
-const formatMovementDate = function (date) {
+const formatMovementDate = function (date, locale) {
   const calcDaysPassed = (date1, date2) =>
     Math.floor(Math.abs(date2 - date1) / (1000 * 60 * 60 * 24));
 
   const daysPassed = calcDaysPassed(new Date(), date);
   console.log(daysPassed);
+  console.log(date);
 
   if (daysPassed === 0) return 'Today';
   if (daysPassed === 1) return 'Yesterday';
   if (daysPassed <= 7) return `${daysPassed} days ago`;
 
-  const day = `${date.getDate()}`.padStart(2, 0);
-  const month = `${date.getMonth() + 1}`.padStart(2, 0);
-  const year = date.getFullYear();
-  return `${month}/${day}/${year}`;
+  // const day = `${date.getDate()}`.padStart(2, 0);
+  // const month = `${date.getMonth() + 1}`.padStart(2, 0);
+  // const year = date.getFullYear();
+  // return `${month}/${day}/${year}`;
+  return new Intl.DateTimeFormat(locale).format(date);
 
   //const displayDate = formatMovementDate(date, acc.locale);
+};
+
+const formatCur = function (value, locale, currency) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currency,
+  }).format(value);
 };
 
 const displayMovements = function (acc, sort = false) {
@@ -119,28 +128,34 @@ const displayMovements = function (acc, sort = false) {
 
   if (sort) combinedMovsDates.sort((a, b) => a.movement - b.movement);
 
-  // const movs = sort
-  //   ? acc.movements.slice().sort((a, b) => a - b)
-  //   : acc.movements;
-
   combinedMovsDates.forEach(function (obj, i) {
     const { movement, movementDate } = obj;
     const type = movement > 0 ? 'deposit' : 'withdrawal';
 
-    const date = new Date(movementDate);
-    const displayDate = formatMovementDate(date);
+    const movs = sort
+      ? acc.movements.slice().sort((a, b) => a - b)
+      : acc.movements;
 
-    const html = `
+    movs.forEach(function (mov, i) {
+      const type = mov > 0 ? 'deposit' : 'withdrawal';
+
+      const date = new Date(movementDate);
+      const displayDate = formatMovementDate(date, acc.locale);
+
+      const formattedMov = formatCur(mov, acc.locale, acc.currency);
+
+      const html = `
       <div class="movements__row">
         <div class="movements__type movements__type--${type}">${
-      i + 1
-    } ${type}</div>
+        i + 1
+      } ${type}</div>
         <div class="movements__date">${displayDate}</div>
-        <div class="movements__value">${movement.toFixed(2)}€</div>
+        <div class="movements__value">${formattedMov}</div>
       </div>
     `;
 
-    containerMovements.insertAdjacentHTML('afterbegin', html);
+      containerMovements.insertAdjacentHTML('afterbegin', html);
+    });
   });
 };
 
@@ -150,7 +165,8 @@ const calcDisplayBalance = function (acc) {
   console.log(acc);
 
   acc.balance = acc.movements.reduce((acc, mov) => acc + mov, 0);
-  labelBalance.textContent = `${acc.balance.toFixed(2)}€`;
+
+  labelBalance.textContent = formatCur(acc.balance, acc.locale, acc.currency);
 };
 //console.log(accounts);
 
@@ -158,12 +174,12 @@ const calcDisplaySummary = function (acc) {
   const incomes = acc.movements
     .filter(mov => mov > 0)
     .reduce((acc, mov) => acc + mov, 0);
-  labelSumIn.textContent = `${incomes.toFixed(2)}€`;
+  labelSumIn.textContent = formatCur(incomes, acc.locale, acc.currency);
 
   const out = acc.movements
     .filter(mov => mov < 0)
     .reduce((acc, mov) => acc + mov, 0);
-  labelSumOut.textContent = `${Math.abs(out).toFixed(2)}€`;
+  labelSumOut.textContent = formatCur(Math.abs(out), acc.locale, acc.currency);
 
   const interest = acc.movements
     .filter(mov => mov > 0)
@@ -173,7 +189,7 @@ const calcDisplaySummary = function (acc) {
       return int >= 1;
     })
     .reduce((acc, int) => acc + int, 0);
-  labelSumInterest.textContent = `${interest.toFixed(2)}€`;
+  labelSumInterest.textContent = formatCur(interest, acc.locale, acc.currency);;
 };
 
 const createUsernames = function (accs) {
@@ -213,12 +229,17 @@ const options = {
   hour: 'numeric',
   minute: 'numeric',
   day: 'numeric',
-  month: 'long',
+  month: 'numeric',
   year: 'numeric',
-  weekday: 'short',
+  //weekday: 'short',
 };
+//const locale = navigator.language;
+//console.log(locale);
 
-labelDate.textContent = new Intl.DateTimeFormat('en-US', options).format(now);
+labelDate.textContent = new Intl.DateTimeFormat(
+  currentAccount.locale,
+  options
+).format(now);
 
 btnLogin.addEventListener('click', e => {
   e.preventDefault();
@@ -525,4 +546,30 @@ const calcDaysPassed = (date1, date2) =>
 
 const days1 = calcDaysPassed(new Date(2037, 3, 4), new Date(2037, 3, 14));
 console.log(days1);
+
+const num = 3884764.23;
+
+const options = {
+  style: 'currency',
+  unit: 'celsius',
+  currency: 'EUR',
+  // useGrouping: false,
+};
+
+console.log('US:      ', new Intl.NumberFormat('en-US', options).format(num));
+console.log('Germany: ', new Intl.NumberFormat('de-DE', options).format(num));
+console.log('Syria:   ', new Intl.NumberFormat('ar-SY', options).format(num));
+console.log(
+  navigator.language,
+  new Intl.NumberFormat(navigator.language, options).format(num));
 */
+
+const ingredients = ['olives', 'spinach'];
+const pizzaTimer = setTimeout(
+  (ing1, ing2) => console.log(`Here is your pizza with ${ing1} and ${ing2} 🍕`),
+  3000,
+  ...ingredients
+);
+console.log('Waiting...');
+
+if (ingredients.includes('spinach')) clearTimeout(pizzaTimer);
